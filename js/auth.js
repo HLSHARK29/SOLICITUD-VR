@@ -35,11 +35,9 @@ export async function registrarUsuario(email, password, pin) {
         return userCredential.user;
         
     } catch (error) {
-        // Aquí "traducimos" el error técnico a un mensaje formal
         if (error.code === 'auth/email-already-in-use') {
             throw new Error("El correo ya está en uso");
         }
-        // Si es cualquier otro error, dejamos el original o uno genérico
         throw new Error(error.message);
     }
 }
@@ -49,7 +47,7 @@ export async function iniciarSesion(email, password, pin = null) {
     // 1. Firebase Auth como llave de acceso universal
     const userCredential = await signInWithEmailAndPassword(auth, email, UNIVERSAL_FIREBASE_PASS);
     
-    // 2. Buscamos en 'clientes'
+    // 2. Buscamos en 'clientes' para validar credenciales
     const userDoc = await getDoc(doc(db, "clientes", userCredential.user.uid));
     
     if (!userDoc.exists()) {
@@ -58,9 +56,8 @@ export async function iniciarSesion(email, password, pin = null) {
     }
 
     const data = userDoc.data();
-    console.log("Datos encontrados en Firestore:", data); // Para debug
     
-    // 3. Validación lógica (usamos Strings para evitar errores de tipo)
+    // 3. Validación lógica
     const esValido = pin ? (String(data.folio) === String(pin)) : (String(data.cedula) === String(password));
     
     if (!esValido) {

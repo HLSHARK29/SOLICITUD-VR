@@ -7,14 +7,27 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/fi
 verificarSesion();
 
 let solicitudesLocales = [];
-let idEdicionActual = null; 
+let idEdicionActual = null;
 let catalogos = {
     productos: [],
     asesores: []
 };
 
+// Variable de entorno regional
+let plantaActiva = localStorage.getItem('corex_planta_activa') || '700_CIUDAD_DE_MEXICO';
+
 // Inicialización de la App
 function iniciarApp() {
+    const selectPlanta = document.getElementById("select-planta-activa");
+    selectPlanta.value = plantaActiva;
+
+    // Listener del selector de planta en el header
+    selectPlanta.addEventListener("change", (e) => {
+        plantaActiva = e.target.value;
+        localStorage.setItem('corex_planta_activa', plantaActiva);
+        location.reload(); // Recarga para re-sincronizar los listeners con la nueva planta
+    });
+
     // 1. Cargar Productos Globales
     onSnapshot(doc(db, "configuracion", "catalogos"), (docSnap) => {
         if (docSnap.exists()) {
@@ -25,11 +38,11 @@ function iniciarApp() {
         actualizarSelectsYPaneles();
     });
 
-    // 2. Escuchar cambios de autenticación para datos del Cliente
+    // 2. Escuchar cambios de autenticación
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            // Cargar Solicitudes del Cliente
-            const colRef = collection(db, "clientes", user.uid, "solicitudes");
+            // Cargar Solicitudes por USUARIO y por PLANTA
+            const colRef = collection(db, "clientes", user.uid, "plantas_corex", plantaActiva, "solicitudes");
             const consultaOrdenada = query(colRef, orderBy("timestamp", "asc"));
             
             onSnapshot(consultaOrdenada, (snapshot) => {
@@ -40,8 +53,8 @@ function iniciarApp() {
                 pintarTabla();
             });
 
-            // Cargar Asesores del Cliente
-            onSnapshot(doc(db, "clientes", user.uid, "configuracion", "asesores"), (docSnap) => {
+            // Cargar Asesores por PLANTA (Compartidos)
+            onSnapshot(doc(db, "plantas_corex", plantaActiva, "configuracion", "asesores"), (docSnap) => {
                 catalogos.asesores = docSnap.exists() ? (docSnap.data().lista || []) : [];
                 actualizarSelectsYPaneles();
             });
@@ -57,7 +70,7 @@ function pintarTabla() {
     cuerpo.innerHTML = ""; 
 
     if (solicitudesLocales.length === 0) {
-        cuerpo.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-400"><i class="fa-solid fa-share-nodes text-2xl block mb-2 text-gray-300"></i>No hay enlaces registrados en el radar.</td></tr>`;
+        cuerpo.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-gray-400"><i class="fa-solid fa-share-nodes text-2xl block mb-2 text-gray-300"></i>No hay enlaces registrados en el radar.</td></tr>`;
         return;
     }
 
@@ -68,6 +81,11 @@ function pintarTabla() {
         
         const prodMostrar = sol.producto ? sol.producto : "-";
         const asesorMostrar = sol.asesor ? sol.asesor : "-";
+        
+        // Lógica de estado
+        const esCompleto = sol.estado === "Completo";
+        const colorEstado = esCompleto ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700";
+        const iconoEstado = esCompleto ? "fa-check-circle" : "fa-clock";
 
         fila.innerHTML = `
             <td class="px-4 py-4 text-center font-bold text-gray-400" onclick="event.stopPropagation();">${index + 1}</td>
@@ -81,6 +99,11 @@ function pintarTabla() {
             <td class="px-6 py-4 text-emerald-950 font-medium">${asesorMostrar}</td>
             <td class="px-4 py-4 text-gray-500">${sol.fecha}</td>
             <td class="px-4 py-4 text-gray-400">${sol.hora}</td>
+            <td class="px-6 py-4">
+                <span class="px-3 py-1 rounded-full text-xs font-bold ${colorEstado}">
+                    <i class="fa-solid ${iconoEstado} mr-1"></i> ${sol.estado || 'En curso'}
+                </span>
+            </td>
             <td class="px-4 py-4 text-center" onclick="event.stopPropagation();">
                 <button onclick="window.eliminarSolicitud('${sol.id}')" class="text-red-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition">
                     <i class="fa-solid fa-trash-can"></i>
@@ -119,7 +142,6 @@ window.agregarItemCatalogo = async (tipo, idInput) => {
     const input = document.getElementById(idInput);
     const valor = input.value.trim();
     if (!valor) return;
-    const user = auth.currentUser;
 
     if (tipo === 'productos') {
         if (catalogos.productos.includes(valor)) return alert("Este elemento ya existe.");
@@ -130,20 +152,19 @@ window.agregarItemCatalogo = async (tipo, idInput) => {
         if (catalogos.asesores.includes(valor)) return alert("Este elemento ya existe.");
         catalogos.asesores.push(valor);
         catalogos.asesores.sort();
-        await setDoc(doc(db, "clientes", user.uid, "configuracion", "asesores"), { lista: catalogos.asesores });
+        await setDoc(doc(db, "plantas_corex", plantaActiva, "configuracion", "asesores"), { lista: catalogos.asesores });
     }
     input.value = "";
 };
 
 window.eliminarItemCatalogo = async (tipo, valor) => {
-    const user = auth.currentUser;
     if (confirm(`¿Quitar "${valor}" de la lista?`)) {
         if (tipo === 'productos') {
             catalogos.productos = catalogos.productos.filter(item => item !== valor);
             await setDoc(doc(db, "configuracion", "catalogos"), { productos: catalogos.productos });
         } else {
             catalogos.asesores = catalogos.asesores.filter(item => item !== valor);
-            await setDoc(doc(db, "clientes", user.uid, "configuracion", "asesores"), { lista: catalogos.asesores });
+            await setDoc(doc(db, "plantas_corex", plantaActiva, "configuracion", "asesores"), { lista: catalogos.asesores });
         }
     }
 };
@@ -155,7 +176,15 @@ window.abrirModalNuevo = () => {
     document.getElementById('modalTitulo').innerText = "Registrar nuevo pendiente";
     document.getElementById('btnTextoGuardar').innerText = "Insertar al Radar";
     document.getElementById('btnIconoGuardar').className = "fa-solid fa-cloud-arrow-up";
+    
     document.getElementById('inputLink').value = '';
+    document.getElementById('selectTipo').value = 'Alta';
+    document.getElementById('selectProducto').value = '';
+    document.getElementById('selectAsesor').value = '';
+    document.getElementById('inputOtro').value = '';
+    document.getElementById('contenedorOtro').classList.add('hidden');
+    document.getElementById('inputNuevoAsesorRapido').classList.add('hidden');
+    
     document.getElementById('modalAgregar').classList.remove('hidden');
     setTimeout(() => { document.getElementById('inputLink').focus(); }, 50);
 };
@@ -210,7 +239,7 @@ window.procesarFormulario = async () => {
     if (producto === "Otro") producto = document.getElementById("inputOtro").value.trim() || "Otro";
 
     const user = auth.currentUser;
-    const colRef = collection(db, "clientes", user.uid, "solicitudes");
+    const colRef = collection(db, "clientes", user.uid, "plantas_corex", plantaActiva, "solicitudes");
 
     if (!idEdicionActual) {
         const duplicado = solicitudesLocales.find(item => item.link === link);
@@ -218,14 +247,36 @@ window.procesarFormulario = async () => {
             if (confirm(`⚠️ Registro Duplicado!\n¿Editar el existente?`)) window.abrirModalEditar(duplicado.id);
             return;
         }
-        await addDoc(colRef, { link, tipo, producto, asesor, fecha: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString(), timestamp: Date.now() });
+        await addDoc(colRef, { 
+            link, 
+            tipo, 
+            producto, 
+            asesor, 
+            estado: "En curso", 
+            fecha: new Date().toLocaleDateString(), 
+            hora: new Date().toLocaleTimeString(), 
+            timestamp: Date.now() 
+        });
     } else {
-        await updateDoc(doc(db, "clientes", user.uid, "solicitudes", idEdicionActual), { link, tipo, producto, asesor });
+        await updateDoc(doc(db, "clientes", user.uid, "plantas_corex", plantaActiva, "solicitudes", idEdicionActual), { link, tipo, producto, asesor });
     }
     window.cerrarModal();
 };
 
 window.eliminarSolicitud = async (id) => {
     const user = auth.currentUser;
-    if (confirm("¿Deseas quitar este enlace?")) await deleteDoc(doc(db, "clientes", user.uid, "solicitudes", id));
+    if (confirm("¿Deseas quitar este enlace?")) await deleteDoc(doc(db, "clientes", user.uid, "plantas_corex", plantaActiva, "solicitudes", id));
+};
+
+window.agregarAsesorRapido = async () => {
+    const input = document.getElementById("valorNuevoAsesor");
+    const nuevoAsesor = input.value.trim();
+    if (!nuevoAsesor || catalogos.asesores.includes(nuevoAsesor)) return;
+
+    catalogos.asesores.push(nuevoAsesor);
+    catalogos.asesores.sort();
+    await setDoc(doc(db, "plantas_corex", plantaActiva, "configuracion", "asesores"), { lista: catalogos.asesores });
+    
+    input.value = "";
+    document.getElementById('inputNuevoAsesorRapido').classList.add('hidden');
 };
