@@ -6,6 +6,15 @@
     
     <title>SOLICITUD_VR</title>
 
+    <!-- PWA Config -->
+    <link rel="manifest" href="manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .catch(err => console.log('SW no pudo registrarse', err));
+        }
+    </script>
+
     <!-- Tailwind y FontAwesome desde CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
