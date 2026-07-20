@@ -3,17 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5">
     
     <title>SOLICITUD_VR</title>
 
     <!-- PWA Config -->
-    <link rel="manifest" href="manifest.json?v=1.0.0">
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
-                .catch(err => console.log('SW no pudo registrarse', err));
-        }
-    </script>
+    <link rel="manifest" href="/SOLICITUD-VR/manifest.json">
 
     <!-- Tailwind y FontAwesome desde CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -133,6 +128,17 @@
             </div>
         </div>
     </div>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/SOLICITUD-VR/sw.js')
+                    .then(reg => console.log('SW registrado:', reg.scope))
+                    .catch(err => console.log('SW error:', err));
+            });
+        }
+    </script>
 
     <!-- Scripts de carga -->
     <script type="module">
