@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>SOLICITUD_VR</title>
+
+    <!-- Tailwind y FontAwesome desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 font-sans min-h-screen pb-24">
+
+    <!-- Navegación -->
+    <nav class="bg-indigo-600 text-white shadow-md px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <h1 class="text-lg font-bold tracking-wider">SOLICITUD_VR</h1>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center bg-indigo-800 rounded-lg px-3 py-1 border border-indigo-400">
+                <i class="fa-solid fa-location-dot text-indigo-300 mr-2 text-xs"></i>
+                <select id="select-planta-activa" class="bg-indigo-800 text-white text-xs font-bold focus:outline-none cursor-pointer">
+                    <option value="700_CIUDAD_DE_MEXICO">CIUDAD DE MEXICO</option>
+                    <option value="050_HERMOSILLO">HERMOSILLO</option>
+                    <option value="060_NOGALES">NOGALES</option>
+                    <option value="100_JUAREZ">JUAREZ</option>
+                    <option value="150_CULIACAN">CULIACAN</option>
+                    <option value="200_MEXICALI">MEXICALI</option>
+                    <option value="210_TIJUANA">TIJUANA</option>
+                    <option value="250_LA_PAZ">LA PAZ</option>
+                    <option value="300_MONTERREY">MONTERREY</option>
+                    <option value="350_QUERETARO">QUERETARO</option>
+                    <option value="450_GUADALAJARA">GUADALAJARA</option>
+                    <option value="500_VILLAHERMOSA">VILLAHERMOSA</option>
+                    <option value="550_MERIDA">MERIDA</option>
+                    <option value="600_VERACRUZ">VERACRUZ</option>
+                    <option value="650_CANCUN">CANCUN</option>
+                </select>
+            </div>
+            <button id="btn-cerrar-sesion" class="hover:text-indigo-200 transition">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div id="banner-validacion" class="hidden bg-amber-100 text-amber-800 text-[10px] px-6 py-1 border-b border-amber-200 text-center font-semibold"></div>
+
+    <main class="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        
+        <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <div>
+                <h2 class="text-base font-bold text-gray-800">Control de Pendientes</h2>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="window.togglePanelListas()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-2 rounded-lg text-sm border border-gray-300 transition">
+                    <i class="fa-solid fa-sliders"></i> <span class="hidden sm:inline">Catálogos</span>
+                </button>
+                <button onclick="window.abrirModalNuevo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow transition flex items-center space-x-2 text-sm">
+                    <i class="fa-solid fa-plus"></i> <span>Agregar Nuevo</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Panel de Configuración -->
+        <div id="panelListas" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-100 p-4 rounded-xl border border-gray-300 shadow-inner">
+            <div class="bg-white p-4 rounded-lg border border-gray-200 space-y-2">
+                <h4 class="font-bold text-gray-700 text-xs uppercase"><i class="fa-solid fa-cubes text-indigo-500 mr-1"></i> Catálogo Productos</h4>
+                <div class="flex gap-2">
+                    <input type="text" id="nuevoProductoInput" placeholder="Ej. Insulpanel" class="grow px-2 py-1 border rounded text-xs focus:outline-none">
+                    <button onclick="window.agregarItemCatalogo('productos', 'nuevoProductoInput')" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs">Añadir</button>
+                </div>
+                <div id="listaProductosCrud" class="flex flex-wrap gap-1.5 pt-2"></div>
+            </div>
+            <div class="bg-white p-4 rounded-lg border border-gray-200 space-y-2">
+                <h4 class="font-bold text-gray-700 text-xs uppercase"><i class="fa-solid fa-user-tie text-indigo-500 mr-1"></i> Catálogo Asesores</h4>
+                <div class="flex gap-2">
+                    <input type="text" id="nuevoAsesorInput" placeholder="Ej. Jessica" class="grow px-2 py-1 border rounded text-xs focus:outline-none">
+                    <button onclick="window.agregarItemCatalogo('asesores', 'nuevoAsesorInput')" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs">Añadir</button>
+                </div>
+                <div id="listaAsesoresCrud" class="flex flex-wrap gap-1.5 pt-2"></div>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 text-gray-700 text-xs uppercase font-semibold">
+                            <th class="px-4 py-4 text-center">#</th>
+                            <th class="px-4 py-4">Link</th>
+                            <th class="px-6 py-4">Tipo</th>
+                            <th class="px-6 py-4">Producto</th>
+                            <th class="px-6 py-4">Asesor</th>
+                            <th class="px-4 py-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCuerpo" class="divide-y divide-gray-100 text-sm text-gray-600"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modalAgregar" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 class="font-bold text-gray-800 text-base" id="modalTitulo">Registrar pendiente</h3>
+            <input type="url" id="inputLink" placeholder="Enlace de Microsoft..." class="w-full px-3 py-2 border rounded-lg text-sm">
+            <select id="selectTipo" class="w-full px-3 py-2 border rounded-lg text-sm">
+                <option value="Alta">Alta</option>
+                <option value="Asignación">Asignación</option>
+            </select>
+            <select id="selectProducto" onchange="window.controlarCampoOtro()" class="w-full px-3 py-2 border rounded-lg text-sm"></select>
+            <div id="contenedorOtro" class="hidden">
+                <input type="text" id="inputOtro" placeholder="Escribe el producto..." class="w-full px-3 py-2 border rounded-lg text-sm">
+            </div>
+            <select id="selectAsesor" class="w-full px-3 py-2 border rounded-lg text-sm"></select>
+            
+            <div class="flex justify-end space-x-2 pt-4">
+                <button onclick="window.cerrarModal()" class="px-4 py-2 text-gray-600">Cancelar</button>
+                <button onclick="window.procesarFormulario()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de carga -->
+    <script type="module">
+        import { cerrarSesion } from "./js/auth.js";
+        document.getElementById('btn-cerrar-sesion').addEventListener('click', cerrarSesion);
+    </script>
+    <script type="module" src="js/app.js?v=1.0.0"></script>
+</body>
+</html>
