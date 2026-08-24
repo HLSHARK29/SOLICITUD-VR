@@ -58,6 +58,10 @@
                 <h2 class="text-base font-bold text-gray-800">Control de Pendientes</h2>
             </div>
             <div class="flex space-x-2">
+                <!-- Botón de Historial -->
+                <button onclick="window.abrirModalHistorial()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-2 rounded-lg text-sm border border-gray-300 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden sm:inline">Historial</span>
+                </button>
                 <button onclick="window.togglePanelListas()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-2 rounded-lg text-sm border border-gray-300 transition">
                     <i class="fa-solid fa-sliders"></i> <span class="hidden sm:inline">Catálogos</span>
                 </button>
@@ -98,7 +102,10 @@
                             <th class="px-6 py-4">Tipo</th>
                             <th class="px-6 py-4">Producto</th>
                             <th class="px-6 py-4">Asesor</th>
-                            <th class="px-4 py-4">Acciones</th>
+                            <th class="px-4 py-4">Fecha Creación</th>
+                            <th class="px-4 py-4">Hora Creación</th>
+                            <th class="px-6 py-4">Estado</th>
+                            <th class="px-4 py-4 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaCuerpo" class="divide-y divide-gray-100 text-sm text-gray-600"></tbody>
@@ -107,7 +114,7 @@
         </div>
     </main>
 
-    <!-- Modal -->
+    <!-- Modal para Agregar/Editar -->
     <div id="modalAgregar" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
             <h3 class="font-bold text-gray-800 text-base" id="modalTitulo">Registrar pendiente</h3>
@@ -130,6 +137,196 @@
         </div>
     </div>
 
+    <!-- Modal de Actualización de Estado (Cierre) con Comentarios -->
+    <div id="modalEstado" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 class="font-bold text-gray-800 text-base flex items-center">
+                <i class="fa-solid fa-pen-to-square text-indigo-600 mr-2"></i> Actualización de estado
+            </h3>
+            <p class="text-xs text-gray-500">Selecciona el estado de cierre y añade comentarios opcionales:</p>
+            
+            <select id="selectNuevoEstado" onchange="window.controlarCampoOtroEstado()" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="Completo">Completo</option>
+                <option value="Duplicado">Duplicado</option>
+                <option value="Eliminado">Eliminado</option>
+                <option value="Otro">Otro</option>
+            </select>
+
+            <div id="contenedorOtroEstado" class="hidden">
+                <input type="text" id="inputOtroEstado" placeholder="Escribe el estado..." class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-600">Comentarios adicionales:</label>
+                <textarea id="inputComentariosCierre" rows="3" placeholder="Escribe notas relevantes..." class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="window.cerrarModalEstado()" class="px-4 py-2 text-gray-600 text-sm">Cancelar</button>
+                <button onclick="window.guardarNuevoEstado()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Ver / Editar Comentarios en el Historial (Forzado al frente con style z-index: 9999) -->
+    <div id="modalComentarios" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex justify-center items-center p-4" style="z-index: 9999;">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 class="font-bold text-gray-800 text-base flex items-center">
+                <i class="fa-solid fa-comments text-indigo-600 mr-2"></i> Comentarios de la Solicitud
+            </h3>
+            <p class="text-xs text-gray-500">Puedes consultar o modificar los comentarios asociados a este registro:</p>
+            
+            <textarea id="inputComentariosEdicion" rows="4" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="window.cerrarModalComentarios()" class="px-4 py-2 text-gray-600 text-sm">Cancelar</button>
+                <button onclick="window.guardarComentariosEdicion()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition">Actualizar Comentarios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Historial / Solicitudes Cerradas -->
+    <div id="modalHistorial" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col p-6 space-y-4">
+            
+            <!-- Cabecera del Modal -->
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-gray-800 text-lg flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-600 mr-2"></i> Historial de Solicitudes Cerradas
+                </h3>
+                <button onclick="window.cerrarModalHistorial()" class="text-gray-500 hover:text-gray-700 text-xl font-bold px-2">&times;</button>
+            </div>
+            
+            <!-- Zona Desplegable de Filtros (Acordeón) -->
+            <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden transition-all duration-200">
+                <!-- Botón Cabecera del Acordeón -->
+                <button onclick="window.toggleFiltrosHistorial()" class="w-full px-4 py-3 flex justify-between items-center bg-gray-100/70 hover:bg-gray-100 text-gray-700 font-semibold text-xs uppercase tracking-wide transition">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-filter text-indigo-600"></i>
+                        <span>Filtros de Búsqueda y Fechas</span>
+                    </div>
+                    <i id="iconoFlechaFiltros" class="fa-solid fa-chevron-down text-gray-500 transition-transform duration-200"></i>
+                </button>
+
+                <!-- Contenido Oculto/Desplegable -->
+                <div id="contenedorFiltros" class="hidden p-4 space-y-3 border-t border-gray-200 bg-white">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        
+                        <!-- Búsqueda por Texto Libre -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Buscar (Libre / Notas)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                </span>
+                                <input type="text" id="filtroTextoHistorial" oninput="window.filtrarHistorial()" placeholder="Palabra clave..." class="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                            </div>
+                        </div>
+
+                        <!-- Tipo de Solicitud -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Tipo de Solicitud</label>
+                            <select id="filtroTipoHistorial" onchange="window.filtrarHistorial()" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                <option value="">Todos los tipos</option>
+                                <option value="Alta">Alta</option>
+                                <option value="Asignación">Asignación</option>
+                                <option value="Modificación">Modificación</option>
+                            </select>
+                        </div>
+
+                        <!-- Producto -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Producto</label>
+                            <select id="filtroProductoHistorial" onchange="window.filtrarHistorial()" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                <option value="">Todos los productos</option>
+                            </select>
+                        </div>
+
+                        <!-- Asesor -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Asesor</label>
+                            <select id="filtroAsesorHistorial" onchange="window.filtrarHistorial()" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                <option value="">Todos los asesores</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Segunda línea de filtros: Fechas y Estado Final -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-gray-100">
+                        
+                        <!-- Estado Final -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Estado Final</label>
+                            <select id="filtroEstadoHistorial" onchange="window.filtrarHistorial()" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                <option value="">Todos los estados</option>
+                                <option value="Completo">Completo</option>
+                                <option value="Duplicado">Duplicado</option>
+                                <option value="Eliminado">Eliminado</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <!-- Criterio de Fecha (Creación o Cierre) -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Filtrar Fecha por:</label>
+                            <select id="filtroCriterioFecha" onchange="window.filtrarHistorial()" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                <option value="creacion">Fecha Creación</option>
+                                <option value="cierre">Fecha Cierre</option>
+                            </select>
+                        </div>
+
+                        <!-- Desde (Fecha Inicial / Período) -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Desde / Fecha Exacta</label>
+                            <input type="date" id="filtroFechaDesde" onchange="window.filtrarHistorial()" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        </div>
+
+                        <!-- Hasta (Fecha Final del Período) -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Hasta (Opcional)</label>
+                            <input type="date" id="filtroFechaHasta" onchange="window.filtrarHistorial()" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        </div>
+
+                        <!-- Botón para Limpiar Filtros -->
+                        <div class="flex items-end">
+                            <button onclick="window.limpiarFiltrosHistorial()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-center space-x-1 border border-gray-300">
+                                <i class="fa-solid fa-filter-circle-xmark"></i> <span>Limpiar Filtros</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla del Historial -->
+            <div class="overflow-y-auto grow">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 text-gray-700 text-xs uppercase font-semibold">
+                            <th class="px-4 py-3 text-center">#</th>
+                            <th class="px-4 py-3">Link</th>
+                            <th class="px-6 py-3">Tipo</th>
+                            <th class="px-6 py-3">Producto</th>
+                            <th class="px-6 py-3">Asesor</th>
+                            <th class="px-4 py-3">Fecha Creación</th>
+                            <th class="px-4 py-3">Hora Creación</th>
+                            <th class="px-4 py-3">Fecha Cierre</th>
+                            <th class="px-4 py-3">Hora Cierre</th>
+                            <th class="px-6 py-3">Estado Final</th>
+                            <th class="px-4 py-3 text-center">Notas</th>
+                            <th class="px-4 py-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCuerpoHistorial" class="divide-y divide-gray-100 text-sm text-gray-600"></tbody>
+                </table>
+            </div>
+
+            <!-- Pie del Modal -->
+            <div class="flex justify-end pt-3 border-t">
+                <button onclick="window.cerrarModalHistorial()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- PWA Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -141,11 +338,26 @@
         }
     </script>
 
+    <!-- Script para el comportamiento del acordeón de filtros -->
+    <script>
+        window.toggleFiltrosHistorial = function() {
+            const contenedor = document.getElementById('contenedorFiltros');
+            const icono = document.getElementById('iconoFlechaFiltros');
+            
+            contenedor.classList.toggle('hidden');
+            if (contenedor.classList.contains('hidden')) {
+                icono.classList.remove('rotate-180');
+            } else {
+                icono.classList.add('rotate-180');
+            }
+        };
+    </script>
+
     <!-- Scripts de carga -->
     <script type="module">
         import { cerrarSesion } from "./js/auth.js";
         document.getElementById('btn-cerrar-sesion').addEventListener('click', cerrarSesion);
     </script>
-    <script type="module" src="js/app.js?v=1.0.0"></script>
+    <script type="module" src="js/app.js?v=1.0.1"></script>
 </body>
 </html>
